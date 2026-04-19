@@ -7,6 +7,9 @@ use std::path::PathBuf;
 #[command(
     name = "netpulse",
     about = "Per-process network traffic monitor (eBPF-powered)",
+    long_about = "NetPulse attaches kprobes to tcp_sendmsg, tcp_recvmsg, udp_sendmsg, udp_recvmsg \
+                  and records cumulative byte counts per (pid, remote_ip, remote_port, proto).\n\n\
+                  Requires root or CAP_BPF + CAP_NET_ADMIN.  Linux kernel ≥ 5.8.",
     version,
     author
 )]
@@ -33,6 +36,15 @@ pub struct Cli {
     #[arg(short = 'p', long, default_value_t = 9100)]
     pub prometheus_port: u16,
 
+    /// Default time window (seconds) for the /metrics endpoint.
+    ///
+    /// When set, GET /metrics returns only connections first seen within
+    /// the last N seconds by default (equivalent to ?window=N).
+    /// Individual requests can still override with ?window=<secs>.
+    /// 0 = all connections since monitoring start (the default behaviour).
+    #[arg(long, default_value_t = 0, value_name = "SECS")]
+    pub metrics_window: u64,
+
     // -----------------------------------------------------------------------
     // Aggregation / filtering
     // -----------------------------------------------------------------------
@@ -41,7 +53,8 @@ pub struct Cli {
     #[arg(long)]
     pub agg_pid: bool,
 
-    /// Only track processes whose name matches this substring (case-insensitive).
+    /// Only track processes whose name or cmdline matches this substring
+    /// (case-insensitive).  Can also be set interactively in TUI with [/].
     #[arg(long, value_name = "NAME")]
     pub filter_comm: Option<String>,
 

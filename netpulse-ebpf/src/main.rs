@@ -47,7 +47,13 @@ fn current_pid() -> u32 {
 
 /// Update the map entry for a given key, adding `delta_tx` / `delta_rx` bytes.
 #[inline(always)]
-unsafe fn record_bytes(key: &TrafficKey, delta_tx: u64, delta_rx: u64, comm: [u8; 16]) {
+unsafe fn record_bytes(
+    key: &TrafficKey,
+    delta_tx: u64,
+    delta_rx: u64,
+    comm: [u8; 16],
+    tcp_state: u8,
+) {
     let now = unsafe { bpf_ktime_get_ns() };
     match TRAFFIC_MAP.get_ptr_mut(key) {
         Some(val) => unsafe {
@@ -56,6 +62,9 @@ unsafe fn record_bytes(key: &TrafficKey, delta_tx: u64, delta_rx: u64, comm: [u8
             (*val).last_seen_ns = now;
             // Refresh comm on every event (process may exec).
             (*val).comm = comm;
+            if tcp_state != 0 {
+                (*val).tcp_state = tcp_state;
+            }
         },
         None => {
             let new_val = TrafficValue {
@@ -63,6 +72,8 @@ unsafe fn record_bytes(key: &TrafficKey, delta_tx: u64, delta_rx: u64, comm: [u8
                 rx_bytes: delta_rx,
                 comm,
                 last_seen_ns: now,
+                tcp_state,
+                _pad2: [0; 7],
             };
             // Ignore insert errors (map full); we prefer not to crash.
             let _ = TRAFFIC_MAP.insert(key, &new_val, 0);
@@ -91,6 +102,7 @@ fn try_tcp_sendmsg(ctx: ProbeContext) -> Result<u32, i64> {
     }
 
     let (remote_ip4, remote_port, local_port) = unsafe { read_sock_addrs(sk) };
+    let tcp_state = unsafe { read_sk_state(sk) };
     let pid = current_pid();
     let comm = current_comm();
 
@@ -107,7 +119,7 @@ fn try_tcp_sendmsg(ctx: ProbeContext) -> Result<u32, i64> {
         &ctx,
         "tcp_sendmsg pid={} size={} dst={}", pid, size as u64, remote_ip4
     );
-    unsafe { record_bytes(&key, size as u64, 0, comm) };
+    unsafe { record_bytes(&key, size as u64, 0, comm, tcp_state) };
     Ok(0)
 }
 
@@ -133,6 +145,7 @@ fn try_tcp_recvmsg(ctx: ProbeContext) -> Result<u32, i64> {
     }
 
     let (remote_ip4, remote_port, local_port) = unsafe { read_sock_addrs(sk) };
+    let tcp_state = unsafe { read_sk_state(sk) };
     let pid = current_pid();
     let comm = current_comm();
 
@@ -145,7 +158,7 @@ fn try_tcp_recvmsg(ctx: ProbeContext) -> Result<u32, i64> {
         _pad: [0; 3],
     };
 
-    unsafe { record_bytes(&key, 0, len as u64, comm) };
+    unsafe { record_bytes(&key, 0, len as u64, comm, tcp_state) };
     Ok(0)
 }
 
@@ -183,7 +196,7 @@ fn try_udp_sendmsg(ctx: ProbeContext) -> Result<u32, i64> {
         _pad: [0; 3],
     };
 
-    unsafe { record_bytes(&key, size as u64, 0, comm) };
+    unsafe { record_bytes(&key, size as u64, 0, comm, 0) };
     Ok(0)
 }
 
@@ -219,7 +232,7 @@ fn try_udp_recvmsg(ctx: ProbeContext) -> Result<u32, i64> {
         _pad: [0; 3],
     };
 
-    unsafe { record_bytes(&key, 0, len as u64, comm) };
+    unsafe { record_bytes(&key, 0, len as u64, comm, 0) };
     Ok(0)
 }
 
@@ -257,8 +270,18 @@ unsafe fn read_sock_addrs(sk: *const c_void) -> (u32, u16, u16) {
     (remote_ip4, remote_port, local_port)
 }
 
-// ---------------------------------------------------------------------------
-// Mandatory panic handler for no_std eBPF programs
+/// Read the TCP state byte from `sk->__sk_common.skc_state`.
+///
+/// `skc_state` has been stable at offset 9 in `struct sock_common` across
+/// all kernels ≥ 4.1.  With full BTF / CO-RE this would be resolved
+/// automatically; here we use the known-stable byte offset.
+#[inline(always)]
+unsafe fn read_sk_state(sk: *const c_void) -> u8 {
+    use aya_ebpf::helpers::bpf_probe_read_kernel;
+    let base = sk as *const u8;
+    unsafe { bpf_probe_read_kernel(base.add(9) as *const u8).unwrap_or(0) }
+}
+
 // ---------------------------------------------------------------------------
 
 #[cfg(not(test))]

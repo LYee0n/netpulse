@@ -38,7 +38,24 @@ pub struct TrafficValue {
     pub comm: [u8; 16],
     /// Timestamp of the last update (nanoseconds since boot, from bpf_ktime_get_ns).
     pub last_seen_ns: u64,
+    /// TCP socket state at last update (see TCP_* constants below); 0 = unknown/UDP.
+    pub tcp_state: u8,
+    /// Padding to maintain 8-byte alignment.
+    pub _pad2: [u8; 7],
 }
+
+// TCP state constants (mirrors kernel tcp_states enum)
+pub const TCP_ESTABLISHED: u8 = 1;
+pub const TCP_SYN_SENT: u8 = 2;
+pub const TCP_SYN_RECV: u8 = 3;
+pub const TCP_FIN_WAIT1: u8 = 4;
+pub const TCP_FIN_WAIT2: u8 = 5;
+pub const TCP_TIME_WAIT: u8 = 6;
+pub const TCP_CLOSE: u8 = 7;
+pub const TCP_CLOSE_WAIT: u8 = 8;
+pub const TCP_LAST_ACK: u8 = 9;
+pub const TCP_LISTEN: u8 = 10;
+pub const TCP_CLOSING: u8 = 11;
 
 /// Marker constants for protocol field.
 pub const PROTO_TCP: u8 = 6;

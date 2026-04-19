@@ -72,12 +72,19 @@ async fn main() -> Result<()> {
                 "metrics mode → http://0.0.0.0:{}/metrics",
                 cli.prometheus_port
             );
+            if cli.metrics_window > 0 {
+                info!(
+                    "default metrics window: {} seconds (override per-request with ?window=N)",
+                    cli.metrics_window
+                );
+            }
             tokio::select! {
                 res = exporter::prometheus::run(
                     store.clone(),
                     cli.prometheus_port,
                     cli.agg_pid,
                     cli.poll_ms,
+                    cli.metrics_window,
                 ) => { res?; }
                 _ = signal::ctrl_c() => {
                     info!("interrupted");
