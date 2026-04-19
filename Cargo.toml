@@ -1,0 +1,56 @@
+[workspace]
+resolver = "2"
+members = [
+    "netpulse",
+    "netpulse-common",
+    "netpulse-ebpf",
+]
+default-members = ["netpulse", "netpulse-common"]
+
+[workspace.package]
+license     = "MIT OR Apache-2.0"
+edition     = "2024"
+version     = "0.1.0"
+authors     = ["NetPulse Contributors"]
+description = "Per-process network traffic monitor powered by eBPF"
+
+[workspace.dependencies]
+# eBPF / Aya
+aya          = { git = "https://github.com/aya-rs/aya", default-features = false }
+aya-build    = { git = "https://github.com/aya-rs/aya", default-features = false }
+aya-ebpf     = { git = "https://github.com/aya-rs/aya", default-features = false }
+aya-log      = { git = "https://github.com/aya-rs/aya", default-features = false }
+aya-log-ebpf = { git = "https://github.com/aya-rs/aya", default-features = false }
+
+# Async
+tokio = { version = "1", default-features = false }
+
+# CLI / logging
+anyhow     = { version = "1", default-features = false }
+clap       = { version = "4", default-features = false, features = ["std", "derive"] }
+log        = { version = "0.4", default-features = false }
+env_logger = { version = "0.11", default-features = false }
+libc       = { version = "0.2", default-features = false }
+
+# TUI
+ratatui    = { version = "0.29", default-features = false, features = ["crossterm"] }
+crossterm  = { version = "0.28" }
+
+# Prometheus
+prometheus-client = { version = "0.22" }
+
+# HTTP server (for Prometheus endpoint)
+axum  = { version = "0.7", default-features = false, features = ["tokio", "http1", "query"] }
+
+# Misc
+serde         = { version = "1", features = ["derive"] }
+serde_json    = { version = "1" }
+chrono        = { version = "0.4", features = ["serde"] }
+parking_lot   = { version = "0.12" }
+cargo_metadata = { version = "0.18", default-features = false }
+which          = { version = "6", default-features = false }
+
+[profile.release.package.netpulse-ebpf]
+debug          = 2
+codegen-units  = 1
+strip          = false

@@ -1,0 +1,168 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.0)"
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Pin the nightly version so builds are reproducible.
+  # Update periodically or tie to rust-toolchain.toml.
+  NIGHTLY: nightly
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Build matrix
+# ──────────────────────────────────────────────────────────────────────────────
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ── Default glibc target ────────────────────────────────────────────
+          - label: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-gnu
+            artifact_suffix: ""          # netpulse  (no suffix → plain binary)
+            musl: false
+
+          # ── Fully-static musl target ────────────────────────────────────────
+          - label: x86_64-unknown-linux-musl
+            target: x86_64-unknown-linux-musl
+            artifact_suffix: "-musl"     # netpulse-musl
+            musl: true
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Rust toolchain ────────────────────────────────────────────────────
+      # netpulse-ebpf must be compiled to BPF bytecode which requires nightly.
+      # The host binary itself also uses nightly because the workspace shares
+      # edition = "2024" and other nightly-gated items.
+      - name: Install Rust nightly + required targets
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.NIGHTLY }}
+          targets: ${{ matrix.target }}
+          components: rust-src
+
+      # ── 3. musl C toolchain (needed by ring / openssl / C deps) ──────────────
+      - name: Install musl toolchain
+        if: matrix.musl
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y musl-tools musl-dev
+
+      # ── 4. LLVM / bpf-linker (required by aya-build to compile eBPF) ─────────
+      - name: Install LLVM and bpf-linker
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y llvm clang libelf-dev
+          cargo install bpf-linker --locked
+
+      # ── 5. Cache ─────────────────────────────────────────────────────────────
+      - name: Cache Cargo registry + build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-
+
+      # ── 6. Build ─────────────────────────────────────────────────────────────
+      - name: Build release binary
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+        run: |
+          cargo +${{ env.NIGHTLY }} build \
+            --release \
+            --package netpulse \
+            --target ${{ matrix.target }}
+
+      # ── 7. Rename & stage binary ─────────────────────────────────────────────
+      - name: Stage binary
+        run: |
+          BINARY="target/${{ matrix.target }}/release/netpulse"
+          DEST="netpulse${{ matrix.artifact_suffix }}"
+          cp "$BINARY" "$DEST"
+          # Print some info to help debug sizing / strip status
+          file "$DEST"
+          ls -lh "$DEST"
+
+      # ── 8. Strip (reduces binary size by ~30-60 %) ───────────────────────────
+      - name: Strip binary
+        run: strip "netpulse${{ matrix.artifact_suffix }}" || true
+
+      # ── 9. Compress ──────────────────────────────────────────────────────────
+      - name: Compress binary
+        run: |
+          tar czvf "netpulse${{ matrix.artifact_suffix }}.tar.gz" \
+            "netpulse${{ matrix.artifact_suffix }}" \
+            README.md
+
+      # ── 10. Upload artifact for the release job ───────────────────────────────
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: netpulse${{ matrix.artifact_suffix }}
+          path: netpulse${{ matrix.artifact_suffix }}.tar.gz
+          retention-days: 1
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Create GitHub Release and attach all binaries
+  # ────────────────────────────────────────────────────────────────────────────
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to create the release and upload assets
+
+    steps:
+      - name: Checkout (for release notes)
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Resolve tag name
+        id: tag
+        run: |
+          # Works for both push-to-tag and workflow_dispatch triggers
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "name=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate checksums
+        working-directory: artifacts/
+        run: |
+          find . -name "*.tar.gz" -exec sha256sum {} \; \
+            | sed 's|./[^/]*/||' \
+            > ../SHA256SUMS.txt
+          cat ../SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: "NetPulse ${{ steps.tag.outputs.name }}"
+          draft: false
+          prerelease: ${{ contains(steps.tag.outputs.name, '-') }}
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.tar.gz
+            SHA256SUMS.txt
