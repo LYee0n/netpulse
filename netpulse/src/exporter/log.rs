@@ -37,10 +37,7 @@ pub async fn run(
             continue;
         }
 
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&output)?;
+        let file = OpenOptions::new().create(true).append(true).open(&output)?;
         let mut writer = BufWriter::new(file);
 
         match format {

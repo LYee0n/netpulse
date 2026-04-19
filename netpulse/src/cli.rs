@@ -5,8 +5,8 @@ use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(
-    name    = "netpulse",
-    about   = "Per-process network traffic monitor (eBPF-powered)",
+    name = "netpulse",
+    about = "Per-process network traffic monitor (eBPF-powered)",
     version,
     author
 )]

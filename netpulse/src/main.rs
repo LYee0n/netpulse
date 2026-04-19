@@ -37,8 +37,8 @@ async fn main() -> Result<()> {
 
     // Start the eBPF loader + map poller in a background task.
     info!("loading eBPF programs…");
-    let _bpf_handle = loader::start(store.clone(), cli.poll_ms)
-        .context("failed to start eBPF loader")?;
+    let _bpf_handle =
+        loader::start(store.clone(), cli.poll_ms).context("failed to start eBPF loader")?;
     info!("eBPF programs loaded and kprobes attached");
 
     // Dispatch to the chosen operating mode.

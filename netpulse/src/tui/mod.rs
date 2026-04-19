@@ -112,9 +112,9 @@ fn draw(f: &mut Frame, store: &GlobalStore, state: &AppState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),  // header
-            Constraint::Min(5),     // table
-            Constraint::Length(1),  // status bar
+            Constraint::Length(3), // header
+            Constraint::Min(5),    // table
+            Constraint::Length(1), // status bar
         ])
         .split(f.area());
 
@@ -127,7 +127,9 @@ fn draw_header(f: &mut Frame, area: ratatui::layout::Rect) {
     let text = Line::from(vec![
         Span::styled(
             " NetPulse ",
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::raw("│ eBPF per-process network monitor │ "),
         Span::styled("[s]", Style::default().fg(Color::Yellow)),
@@ -138,29 +140,30 @@ fn draw_header(f: &mut Frame, area: ratatui::layout::Rect) {
         Span::raw("uit  ↑↓ scroll"),
     ]);
     let p = Paragraph::new(text).block(
-        Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Blue)),
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Blue)),
     );
     f.render_widget(p, area);
 }
 
 const COL_WIDTHS: [Constraint; 7] = [
-    Constraint::Length(7),   // PID
-    Constraint::Length(16),  // COMM
-    Constraint::Length(21),  // REMOTE ADDR
-    Constraint::Length(6),   // PORT
-    Constraint::Length(5),   // PROTO
-    Constraint::Length(12),  // TX
-    Constraint::Length(12),  // RX
+    Constraint::Length(7),  // PID
+    Constraint::Length(16), // COMM
+    Constraint::Length(21), // REMOTE ADDR
+    Constraint::Length(6),  // PORT
+    Constraint::Length(5),  // PROTO
+    Constraint::Length(12), // TX
+    Constraint::Length(12), // RX
 ];
 
-fn draw_table(
-    f: &mut Frame,
-    area: ratatui::layout::Rect,
-    store: &GlobalStore,
-    state: &AppState,
-) {
+fn draw_table(f: &mut Frame, area: ratatui::layout::Rect, store: &GlobalStore, state: &AppState) {
     let header_cells = ["PID", "COMM", "REMOTE IP", "PORT", "PROTO", "TX", "RX"].map(|h| {
-        Cell::from(h).style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD))
+        Cell::from(h).style(
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        )
     });
     let header = Row::new(header_cells)
         .style(Style::default().bg(Color::DarkGray))
@@ -189,16 +192,18 @@ fn draw_table(
                 Cell::from(r.remote_ip.to_string()),
                 Cell::from(r.remote_port.to_string()),
                 Cell::from(r.proto.as_str()),
-                Cell::from(format_bytes(r.tx_bytes))
-                    .style(Style::default().fg(Color::Green)),
-                Cell::from(format_bytes(r.rx_bytes))
-                    .style(Style::default().fg(Color::Cyan)),
+                Cell::from(format_bytes(r.tx_bytes)).style(Style::default().fg(Color::Green)),
+                Cell::from(format_bytes(r.rx_bytes)).style(Style::default().fg(Color::Cyan)),
             ])
             .height(1)
         })
         .collect();
 
-    let sort_label = if state.sort_by_tx { "sort: TX↓" } else { "sort: RX↓" };
+    let sort_label = if state.sort_by_tx {
+        "sort: TX↓"
+    } else {
+        "sort: RX↓"
+    };
     let table = Table::new(rows, COL_WIDTHS)
         .header(header)
         .block(
@@ -214,7 +219,7 @@ fn draw_table(
 
 fn draw_status(f: &mut Frame, area: ratatui::layout::Rect, store: &GlobalStore, state: &AppState) {
     let count = store.0.read().records.len();
-    let sort  = if state.sort_by_tx { "TX ↓" } else { "RX ↓" };
+    let sort = if state.sort_by_tx { "TX ↓" } else { "RX ↓" };
     let filter = state
         .filter_comm
         .as_deref()

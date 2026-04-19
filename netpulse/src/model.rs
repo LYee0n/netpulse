@@ -5,17 +5,13 @@
 //! evicted while the process is running so that short-lived connections
 //! (curl, nslookup …) are not lost between TUI refresh cycles.
 
-use std::{
-    collections::HashMap,
-    net::Ipv4Addr,
-    sync::Arc,
-};
+use std::{collections::HashMap, net::Ipv4Addr, sync::Arc};
 
 use chrono::{DateTime, Utc};
 use parking_lot::RwLock;
 use serde::Serialize;
 
-use netpulse_common::{TrafficKey, TrafficValue, PROTO_TCP, PROTO_UDP};
+use netpulse_common::{PROTO_TCP, PROTO_UDP, TrafficKey, TrafficValue};
 
 // ---------------------------------------------------------------------------
 // Public connection record
@@ -23,16 +19,16 @@ use netpulse_common::{TrafficKey, TrafficValue, PROTO_TCP, PROTO_UDP};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ConnectionRecord {
-    pub pid:         u32,
-    pub comm:        String,
-    pub remote_ip:   Ipv4Addr,
+    pub pid: u32,
+    pub comm: String,
+    pub remote_ip: Ipv4Addr,
     pub remote_port: u16,
-    pub local_port:  u16,
-    pub proto:       Protocol,
-    pub tx_bytes:    u64,
-    pub rx_bytes:    u64,
+    pub local_port: u16,
+    pub proto: Protocol,
+    pub tx_bytes: u64,
+    pub rx_bytes: u64,
     /// Wall-clock time of the last eBPF event for this entry.
-    pub last_seen:   DateTime<Utc>,
+    pub last_seen: DateTime<Utc>,
 }
 
 impl ConnectionRecord {
@@ -65,7 +61,7 @@ impl From<u8> for Protocol {
         match v {
             PROTO_TCP => Protocol::Tcp,
             PROTO_UDP => Protocol::Udp,
-            other     => Protocol::Unknown(other),
+            other => Protocol::Unknown(other),
         }
     }
 }
@@ -76,21 +72,21 @@ impl From<u8> for Protocol {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConnKey {
-    pub pid:         u32,
-    pub remote_ip4:  u32,
+    pub pid: u32,
+    pub remote_ip4: u32,
     pub remote_port: u16,
-    pub local_port:  u16,
-    pub proto:       u8,
+    pub local_port: u16,
+    pub proto: u8,
 }
 
 impl From<&TrafficKey> for ConnKey {
     fn from(k: &TrafficKey) -> Self {
         Self {
-            pid:         k.pid,
-            remote_ip4:  k.remote_ip4,
+            pid: k.pid,
+            remote_ip4: k.remote_ip4,
             remote_port: u16::from_be(k.remote_port),
-            local_port:  k.local_port,
-            proto:       k.proto,
+            local_port: k.local_port,
+            proto: k.proto,
         }
     }
 }
@@ -123,24 +119,25 @@ impl GlobalStore {
             let remote_ip = Ipv4Addr::from(u32::from_be(k.remote_ip4));
             let remote_port = u16::from_be(k.remote_port);
 
-            guard.records
+            guard
+                .records
                 .entry(conn_key)
                 .and_modify(|r| {
-                    r.tx_bytes  = v.tx_bytes;
-                    r.rx_bytes  = v.rx_bytes;
-                    r.comm      = comm.clone();
+                    r.tx_bytes = v.tx_bytes;
+                    r.rx_bytes = v.rx_bytes;
+                    r.comm = comm.clone();
                     r.last_seen = Utc::now();
                 })
                 .or_insert_with(|| ConnectionRecord {
-                    pid:         k.pid,
+                    pid: k.pid,
                     comm,
                     remote_ip,
                     remote_port,
-                    local_port:  k.local_port,
-                    proto:       Protocol::from(k.proto),
-                    tx_bytes:    v.tx_bytes,
-                    rx_bytes:    v.rx_bytes,
-                    last_seen:   Utc::now(),
+                    local_port: k.local_port,
+                    proto: Protocol::from(k.proto),
+                    tx_bytes: v.tx_bytes,
+                    rx_bytes: v.rx_bytes,
+                    last_seen: Utc::now(),
                 });
         }
     }
@@ -186,6 +183,6 @@ pub fn format_bytes(bytes: u64) -> String {
         b if b >= GB => format!("{:.2} GB", b as f64 / GB as f64),
         b if b >= MB => format!("{:.2} MB", b as f64 / MB as f64),
         b if b >= KB => format!("{:.2} KB", b as f64 / KB as f64),
-        b            => format!("{} B", b),
+        b => format!("{} B", b),
     }
 }

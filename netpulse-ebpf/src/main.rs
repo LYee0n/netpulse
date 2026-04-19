@@ -14,8 +14,8 @@ use aya_ebpf::{
     maps::HashMap,
     programs::ProbeContext,
 };
-use core::ffi::c_void;
 use aya_log_ebpf::debug;
+use core::ffi::c_void;
 use netpulse_common::{PROTO_TCP, PROTO_UDP, TrafficKey, TrafficValue};
 
 /// Maximum number of concurrent tracked connections.
@@ -103,7 +103,10 @@ fn try_tcp_sendmsg(ctx: ProbeContext) -> Result<u32, i64> {
         _pad: [0; 3],
     };
 
-    debug!(&ctx, "tcp_sendmsg pid={} size={} dst={}", pid, size as u64, remote_ip4);
+    debug!(
+        &ctx,
+        "tcp_sendmsg pid={} size={} dst={}", pid, size as u64, remote_ip4
+    );
     unsafe { record_bytes(&key, size as u64, 0, comm) };
     Ok(0)
 }
@@ -244,17 +247,12 @@ unsafe fn read_sock_addrs(sk: *const c_void) -> (u32, u16, u16) {
     let base = sk as *const u8;
 
     // skc_daddr  at offset 0
-    let remote_ip4: u32 = unsafe {
-        bpf_probe_read_kernel(base.add(0) as *const u32).unwrap_or(0)
-    };
+    let remote_ip4: u32 = unsafe { bpf_probe_read_kernel(base.add(0) as *const u32).unwrap_or(0) };
     // skc_dport  at offset 12
-    let remote_port: u16 = unsafe {
-        bpf_probe_read_kernel(base.add(12) as *const u16).unwrap_or(0)
-    };
+    let remote_port: u16 =
+        unsafe { bpf_probe_read_kernel(base.add(12) as *const u16).unwrap_or(0) };
     // skc_num    at offset 14  (host byte order)
-    let local_port: u16 = unsafe {
-        bpf_probe_read_kernel(base.add(14) as *const u16).unwrap_or(0)
-    };
+    let local_port: u16 = unsafe { bpf_probe_read_kernel(base.add(14) as *const u16).unwrap_or(0) };
 
     (remote_ip4, remote_port, local_port)
 }

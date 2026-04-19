@@ -30,16 +30,16 @@ use crate::model::{GlobalStore, Protocol};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, prometheus_client::encoding::EncodeLabelSet)]
 struct TrafficLabels {
-    pid:         String,
-    comm:        String,
-    remote_ip:   String,
+    pid: String,
+    comm: String,
+    remote_ip: String,
     remote_port: String,
-    proto:       String,
+    proto: String,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, prometheus_client::encoding::EncodeLabelSet)]
 struct TrafficLabelsPidOnly {
-    pid:  String,
+    pid: String,
     comm: String,
 }
 
@@ -50,8 +50,8 @@ struct TrafficLabelsPidOnly {
 #[derive(Clone)]
 struct AppState {
     registry: Arc<parking_lot::RwLock<Registry>>,
-    store:    GlobalStore,
-    agg_pid:  bool,
+    store: GlobalStore,
+    agg_pid: bool,
 
     // Full-label families
     tx_family: Family<TrafficLabels, Counter>,
@@ -71,8 +71,8 @@ pub async fn run(store: GlobalStore, port: u16, agg_pid: bool, poll_ms: u64) -> 
 
     let tx_family: Family<TrafficLabels, Counter> = Family::default();
     let rx_family: Family<TrafficLabels, Counter> = Family::default();
-    let tx_agg:    Family<TrafficLabelsPidOnly, Counter> = Family::default();
-    let rx_agg:    Family<TrafficLabelsPidOnly, Counter> = Family::default();
+    let tx_agg: Family<TrafficLabelsPidOnly, Counter> = Family::default();
+    let rx_agg: Family<TrafficLabelsPidOnly, Counter> = Family::default();
 
     if agg_pid {
         registry.register(
@@ -123,7 +123,7 @@ pub async fn run(store: GlobalStore, port: u16, agg_pid: bool, poll_ms: u64) -> 
 
     let app = Router::new()
         .route("/metrics", get(metrics_handler))
-        .route("/health",  get(|| async { "ok" }))
+        .route("/health", get(|| async { "ok" }))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
@@ -154,29 +154,32 @@ fn sync_metrics(state: &AppState) {
     let records = state.store.snapshot(true);
 
     for r in records {
-        let pid_s   = r.pid.to_string();
-        let comm_s  = r.comm.clone();
-        let ip_s    = r.remote_ip.to_string();
-        let port_s  = r.remote_port.to_string();
+        let pid_s = r.pid.to_string();
+        let comm_s = r.comm.clone();
+        let ip_s = r.remote_ip.to_string();
+        let port_s = r.remote_port.to_string();
         let proto_s = match r.proto {
-            Protocol::Tcp        => "tcp".to_string(),
-            Protocol::Udp        => "udp".to_string(),
+            Protocol::Tcp => "tcp".to_string(),
+            Protocol::Udp => "udp".to_string(),
             Protocol::Unknown(n) => n.to_string(),
         };
 
         if state.agg_pid {
-            let labels = TrafficLabelsPidOnly { pid: pid_s, comm: comm_s };
+            let labels = TrafficLabelsPidOnly {
+                pid: pid_s,
+                comm: comm_s,
+            };
             // Counters only go up; we set the absolute value by computing
             // how much the stored counter lags behind the eBPF total.
             add_to_counter(&state.tx_agg.get_or_create(&labels), r.tx_bytes);
             add_to_counter(&state.rx_agg.get_or_create(&labels), r.rx_bytes);
         } else {
             let labels = TrafficLabels {
-                pid:         pid_s,
-                comm:        comm_s,
-                remote_ip:   ip_s,
+                pid: pid_s,
+                comm: comm_s,
+                remote_ip: ip_s,
                 remote_port: port_s,
-                proto:       proto_s,
+                proto: proto_s,
             };
             add_to_counter(&state.tx_family.get_or_create(&labels), r.tx_bytes);
             add_to_counter(&state.rx_family.get_or_create(&labels), r.rx_bytes);

@@ -9,11 +9,7 @@
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use aya::{
-    Ebpf,
-    maps::HashMap as BpfHashMap,
-    programs::KProbe,
-};
+use aya::{Ebpf, maps::HashMap as BpfHashMap, programs::KProbe};
 use aya_log::EbpfLogger;
 use log::{debug, info, warn};
 use tokio::{task::JoinHandle, time};
@@ -34,18 +30,17 @@ pub fn start(store: GlobalStore, poll_ms: u64) -> Result<JoinHandle<()>> {
     bump_memlock_rlimit();
 
     // 2. Load the eBPF object embedded at compile time.
-    let mut ebpf = Ebpf::load(aya::include_bytes_aligned!(
-        concat!(env!("OUT_DIR"), "/netpulse")
-    ))
+    let mut ebpf = Ebpf::load(aya::include_bytes_aligned!(concat!(
+        env!("OUT_DIR"),
+        "/netpulse"
+    )))
     .context("failed to load eBPF object")?;
 
     // 3. Initialise eBPF logger.
     match EbpfLogger::init(&mut ebpf) {
         Ok(logger) => {
-            let mut af = tokio::io::unix::AsyncFd::with_interest(
-                logger,
-                tokio::io::Interest::READABLE,
-            )?;
+            let mut af =
+                tokio::io::unix::AsyncFd::with_interest(logger, tokio::io::Interest::READABLE)?;
             tokio::spawn(async move {
                 loop {
                     let mut g = af.readable_mut().await.unwrap();
@@ -80,10 +75,8 @@ pub fn start(store: GlobalStore, poll_ms: u64) -> Result<JoinHandle<()>> {
         loop {
             interval.tick().await;
 
-            let batch: Vec<(TrafficKey, TrafficValue)> = traffic_map
-                .iter()
-                .filter_map(|res| res.ok())
-                .collect();
+            let batch: Vec<(TrafficKey, TrafficValue)> =
+                traffic_map.iter().filter_map(|res| res.ok()).collect();
 
             debug!("polled eBPF map: {} entries", batch.len());
             store.merge_batch(batch);
