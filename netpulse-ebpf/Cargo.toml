@@ -1,0 +1,17 @@
+[package]
+name        = "netpulse-ebpf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "netpulse"
+path = "src/main.rs"
+
+[dependencies]
+aya-ebpf     = { workspace = true }
+aya-log-ebpf = { workspace = true }
+netpulse-common = { path = "../netpulse-common" }
+
+[build-dependencies]
+aya-build = { workspace = true }

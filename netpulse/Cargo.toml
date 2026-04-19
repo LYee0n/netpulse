@@ -1,0 +1,39 @@
+[package]
+name        = "netpulse"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+
+[[bin]]
+name = "netpulse"
+path = "src/main.rs"
+
+[dependencies]
+netpulse-common = { path = "../netpulse-common", features = ["user"] }
+
+aya      = { workspace = true }
+aya-log  = { workspace = true }
+anyhow   = { workspace = true, features = ["std"] }
+clap     = { workspace = true, features = ["derive", "env"] }
+log      = { workspace = true, features = ["std"] }
+env_logger = { workspace = true, features = ["auto-color"] }
+libc     = { workspace = true, features = ["std"] }
+tokio    = { workspace = true, features = ["full"] }
+
+ratatui   = { workspace = true }
+crossterm = { workspace = true }
+
+prometheus-client = { workspace = true }
+axum     = { workspace = true }
+
+serde      = { workspace = true }
+serde_json = { workspace = true }
+chrono     = { workspace = true }
+parking_lot = { workspace = true }
+
+[build-dependencies]
+anyhow         = { workspace = true }
+aya-build      = { workspace = true }
+cargo_metadata = { workspace = true }
+which          = { workspace = true, features = ["regex"] }
