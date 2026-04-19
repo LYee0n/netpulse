@@ -181,12 +181,8 @@ netpulse/
 
 ## Roadmap
 
-- [ ] **Phase 5** — integration tests with a VM that runs real `curl`/`nslookup` traffic
-- [ ] IPv6 support (`skc_v6_daddr`)
 - [ ] TCP state tracking (`sk_state` field)
 - [ ] `/proc/<pid>/fd` correlation for full command line
-- [ ] `--top N` flag to limit TUI rows
-- [ ] Grafana dashboard JSON
 
 ---
 
