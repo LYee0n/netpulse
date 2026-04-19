@@ -105,6 +105,7 @@ pub struct ConnectionRecord {
     pub first_seen: Instant,
 }
 
+#[allow(dead_code)]
 impl ConnectionRecord {
     pub fn remote_addr(&self) -> String {
         format!("{}:{}", self.remote_ip, self.remote_port)
@@ -218,10 +219,10 @@ impl GlobalStore {
                         r.tcp_state = Some(s);
                     }
                     // Try to refresh cmdline if we only have comm so far.
-                    if r.cmdline == r.comm || r.cmdline.is_empty() {
-                        if let Some(cl) = read_cmdline(k.pid) {
-                            r.cmdline = cl;
-                        }
+                    if (r.cmdline == r.comm || r.cmdline.is_empty())
+                        && let Some(cl) = read_cmdline(k.pid)
+                    {
+                        r.cmdline = cl;
                     }
                 })
                 .or_insert_with(|| {
@@ -254,9 +255,9 @@ impl GlobalStore {
         let guard = self.0.read();
         let mut v: Vec<_> = guard.records.values().cloned().collect();
         if sort_by_tx {
-            v.sort_unstable_by(|a, b| b.tx_bytes.cmp(&a.tx_bytes));
+            v.sort_unstable_by_key(|b| std::cmp::Reverse(b.tx_bytes));
         } else {
-            v.sort_unstable_by(|a, b| b.rx_bytes.cmp(&a.rx_bytes));
+            v.sort_unstable_by_key(|b| std::cmp::Reverse(b.rx_bytes));
         }
         v
     }
@@ -274,9 +275,9 @@ impl GlobalStore {
             .cloned()
             .collect();
         if sort_by_tx {
-            v.sort_unstable_by(|a, b| b.tx_bytes.cmp(&a.tx_bytes));
+            v.sort_unstable_by_key(|b| std::cmp::Reverse(b.tx_bytes));
         } else {
-            v.sort_unstable_by(|a, b| b.rx_bytes.cmp(&a.rx_bytes));
+            v.sort_unstable_by_key(|b| std::cmp::Reverse(b.rx_bytes));
         }
         v
     }

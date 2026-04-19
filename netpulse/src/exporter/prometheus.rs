@@ -202,7 +202,7 @@ async fn metrics_handler(
         // Return the background-synced all-time registry.
         let registry = state.registry.read();
         let mut buf = String::new();
-        encode(&mut buf, &*registry).unwrap_or_default();
+        encode(&mut buf, &registry).unwrap_or_default();
         buf
     }
 }
@@ -220,23 +220,23 @@ fn build_windowed_metrics(state: &AppState, window_secs: u64) -> String {
     if state.agg_pid {
         registry.register(
             "process_network_transmit_bytes",
-            &format!("TX bytes (last {window_secs}s window)"),
+            format!("TX bytes (last {window_secs}s window)"),
             tx_agg.clone(),
         );
         registry.register(
             "process_network_receive_bytes",
-            &format!("RX bytes (last {window_secs}s window)"),
+            format!("RX bytes (last {window_secs}s window)"),
             rx_agg.clone(),
         );
     } else {
         registry.register(
             "process_network_transmit_bytes",
-            &format!("TX bytes per endpoint (last {window_secs}s window)"),
+            format!("TX bytes per endpoint (last {window_secs}s window)"),
             tx_family.clone(),
         );
         registry.register(
             "process_network_receive_bytes",
-            &format!("RX bytes per endpoint (last {window_secs}s window)"),
+            format!("RX bytes per endpoint (last {window_secs}s window)"),
             rx_family.clone(),
         );
     }

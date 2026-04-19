@@ -58,7 +58,7 @@ pub async fn run(
                 if !header_written {
                     writeln!(
                         writer,
-                        "{:<8} {:<16} {:<40} {:<15} {:<6} {:<5} {:<11} {:<12} {:<12}  {}",
+                        "{:<8} {:<16} {:<40} {:<15} {:<6} {:<5} {:<11} {:<12} {:<12}  {:#?}",
                         "PID",
                         "COMM",
                         "CMDLINE",
@@ -68,7 +68,7 @@ pub async fn run(
                         "STATE",
                         "TX",
                         "RX",
-                        "LAST SEEN"
+                        "LAST SEEN",
                     )?;
                     writeln!(writer, "{}", "-".repeat(140))?;
                     header_written = true;

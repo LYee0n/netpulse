@@ -134,55 +134,54 @@ async fn event_loop(
     loop {
         terminal.draw(|f| draw(f, &store, &state))?;
 
-        if event::poll(Duration::from_millis(200))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
-                    match state.input_mode {
-                        InputMode::Filter => match key.code {
-                            KeyCode::Esc | KeyCode::Enter => {
-                                state.input_mode = InputMode::Normal;
-                            }
-                            KeyCode::Backspace => {
-                                state.tui_filter.pop();
-                            }
-                            KeyCode::Char(c) => {
-                                state.tui_filter.push(c);
-                                state.scroll = 0;
-                            }
-                            _ => {}
-                        },
-                        InputMode::Normal => match key.code {
-                            KeyCode::Char('q') | KeyCode::Char('Q') => break,
-                            KeyCode::Char('s') | KeyCode::Char('S') => {
-                                state.sort_by_tx = !state.sort_by_tx;
-                                state.scroll = 0;
-                            }
-                            KeyCode::Char('r') | KeyCode::Char('R') => {
-                                store.reset();
-                            }
-                            KeyCode::Char('/') => {
-                                state.input_mode = InputMode::Filter;
-                                state.tui_filter.clear();
-                                state.scroll = 0;
-                            }
-                            KeyCode::Char('1') => {
-                                state.tab = Tab::Active;
-                                state.scroll = 0;
-                            }
-                            KeyCode::Char('2') => {
-                                state.tab = Tab::History;
-                                state.scroll = 0;
-                            }
-                            KeyCode::Down | KeyCode::Char('j') => {
-                                state.scroll = state.scroll.saturating_add(1);
-                            }
-                            KeyCode::Up | KeyCode::Char('k') => {
-                                state.scroll = state.scroll.saturating_sub(1);
-                            }
-                            _ => {}
-                        },
+        if event::poll(Duration::from_millis(200))?
+            && let Event::Key(key) = event::read()?
+            && key.kind == KeyEventKind::Press
+        {
+            match state.input_mode {
+                InputMode::Filter => match key.code {
+                    KeyCode::Esc | KeyCode::Enter => {
+                        state.input_mode = InputMode::Normal;
                     }
-                }
+                    KeyCode::Backspace => {
+                        state.tui_filter.pop();
+                    }
+                    KeyCode::Char(c) => {
+                        state.tui_filter.push(c);
+                        state.scroll = 0;
+                    }
+                    _ => {}
+                },
+                InputMode::Normal => match key.code {
+                    KeyCode::Char('q') | KeyCode::Char('Q') => break,
+                    KeyCode::Char('s') | KeyCode::Char('S') => {
+                        state.sort_by_tx = !state.sort_by_tx;
+                        state.scroll = 0;
+                    }
+                    KeyCode::Char('r') | KeyCode::Char('R') => {
+                        store.reset();
+                    }
+                    KeyCode::Char('/') => {
+                        state.input_mode = InputMode::Filter;
+                        state.tui_filter.clear();
+                        state.scroll = 0;
+                    }
+                    KeyCode::Char('1') => {
+                        state.tab = Tab::Active;
+                        state.scroll = 0;
+                    }
+                    KeyCode::Char('2') => {
+                        state.tab = Tab::History;
+                        state.scroll = 0;
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        state.scroll = state.scroll.saturating_add(1);
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        state.scroll = state.scroll.saturating_sub(1);
+                    }
+                    _ => {}
+                },
             }
         }
     }
